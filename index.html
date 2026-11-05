@@ -175,6 +175,10 @@ textarea{min-height:110px;resize:vertical}
 .btn.link{background:transparent;color:var(--ink-soft);padding:8px}
 .fl-modal img{width:100%;max-height:60dvh;object-fit:contain;border-radius:10px;background:var(--night)}
 .wa-btn{display:block;margin-top:10px;width:100%;border:0;border-radius:10px;padding:11px;background:#25D366;color:#fff;font:600 .9rem var(--body);cursor:pointer}
+.recap{margin-top:10px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;font-size:.88rem;line-height:1.5;white-space:normal}
+.recap b{font-weight:600}
+.ok-btn{display:block;margin-top:10px;width:100%;border:0;border-radius:10px;padding:12px;background:var(--btn);color:var(--on-btn);font:600 .92rem var(--body);cursor:pointer}
+.ok-btn:disabled{opacity:.6;cursor:default}
 
 /* Pied de page */
 footer{background:var(--night);color:var(--night-soft);padding-block:40px 32px;font-size:.92rem}
@@ -902,14 +906,17 @@ let lead=null;
 function local(q){
   const s=q.toLowerCase();
   if(lead){
-    if(lead.step===1){lead.step=2;return "Merci ! Ce tatouage a-t-il une histoire ou une signification particulière ? Si vous le souhaitez, racontez-la-moi : Marie s'en inspirera pour le dessin. Sinon, écrivez simplement « non »."}
-    if(lead.step===2){lead.step=3;return "Merci de partager ça. Quel est votre prénom ?"}
-    if(lead.step===3){lead.nom=q;lead.step=4;return "Et votre numéro WhatsApp, pour que Marie puisse vous répondre ?"}
-    if(lead.step===4){lead.step=5;return "Et votre adresse mail ? Vous y recevrez la confirmation de votre demande."}
-    if(lead.step===5){const n=lead.nom;lead=null;return `C'est noté, ${n} ! Votre projet est transmis à Marie : elle l'étudie et vous recontacte sur WhatsApp. Une confirmation part aussi par mail.`}
+    if(lead.step===1){lead.idee=q;lead.step=2;return "Merci ! Ce tatouage a-t-il une histoire ou une signification particulière ? Si vous le souhaitez, racontez-la-moi : Marie s'en inspirera pour le dessin. Sinon, écrivez simplement « non »."}
+    if(lead.step===2){lead.histoire=/^non\.?$/i.test(q.trim())?"":q;lead.step=3;return "Merci de partager ça. Quelles sont vos disponibilités ?"}
+    if(lead.step===3){lead.dispo=q;lead.step=4;return "Quel est votre prénom et votre nom ?"}
+    if(lead.step===4){lead.nom=q;lead.step=5;return "Et votre numéro WhatsApp, pour que Marie puisse vous répondre ?"}
+    if(lead.step===5){if(!/\d{8,}/.test(q.replace(/\D/g,"")))return "Ce numéro ne semble pas complet. Pouvez-vous le vérifier ?";lead.tel=q;lead.step=6;return "Et votre adresse mail ? Vous y recevrez la confirmation de votre demande."}
+    if(lead.step===6){if(!/^\S+@\S+\.\S+$/.test(q.trim()))return "Cette adresse mail ne semble pas valide. Pouvez-vous la vérifier ?";
+      const L=lead;lead=null;
+      return "Merci ! Vérifiez votre demande ci-dessous, puis appuyez sur « Confirmer et envoyer à Marie ».[ENVOI]"+JSON.stringify({nom:L.nom,whatsapp:L.tel,email:q.trim(),prestation:L.cover?"Cover / rattrapage":"Tatouage",zone:"",taille:"",disponibilites:L.dispo,idee:L.idee,histoire:L.histoire})+"[/ENVOI]"}
   }
   if(/patchwork|forfait/.test(s))return "Deux forfaits patchwork, 3 tatouages en une séance + 1 micro flash offert :\n• Forfait 1 à 220 € : dates, écriture, dessin minimaliste (4 cm max)\n• Forfait 2 à 330 € : écriture ou date, un dessin minimaliste de 4 cm et un dessin plus élaboré jusqu'à 10 cm ou une phrase.";
-  if(/rattrap|cover|recouvr/.test(s)){lead={step:1};return "C'est la spécialité de Marie : elle reprend ou recouvre les anciens tatouages à main levée, directement sur la peau. Le budget est sur mesure. Décrivez-moi le tatouage actuel et ce que vous aimeriez."}
+  if(/rattrap|cover|recouvr/.test(s)){lead={step:1,cover:true};return "C'est la spécialité de Marie : elle reprend ou recouvre les anciens tatouages à main levée, directement sur la peau. Le budget est sur mesure. Décrivez-moi le tatouage actuel et ce que vous aimeriez."}
   if(/prix|tarif|combien|coût|cout|budget/.test(s))return "Fine Line et petits projets (moins de 10 cm) : 60 à 200 €. Réalisme : portrait simple ou animal 400 €, portrait avec décor dès 500 €, grand projet 400 € la demi-journée ou 700 € la journée. Freehand et covers : sur mesure. Forfaits patchwork : 220 € ou 330 €. La date est confirmée par un acompte de 50 € minimum.";
   if(/projet|tatou|rdv|rendez|réserv|reserv/.test(s)&&!/retouch|flash|piercing/.test(s)){lead={step:1};return "Avec plaisir ! Décrivez-moi votre idée : la taille, l'emplacement, vos inspirations et les détails souhaités."}
   if(/flash|soirée|soiree|événement|evenement/.test(s))return "Les soirées Flash ont lieu le premier vendredi de chaque mois dès 17h : petits tatouages déjà préparés ou minis projets, entre 60 et 80 €. On réserve son créneau au salon le soir même. Les dates sont dans « Événements à venir ».";
@@ -926,6 +933,32 @@ function local(q){
   if(/téléphone|telephone|appeler|numéro|numero|whatsapp|instagram|contact/.test(s))return "Téléphone et WhatsApp : +32 472 80 31 27. Instagram : @maka.ink.";
   return "Je peux vous renseigner sur les prix, les forfaits patchwork, les rattrapages, les piercings, la préparation, la cicatrisation, les retouches et les soirées Flash. Ou je transmets directement votre projet à Marie.";
 }
+/* --- Demande de projet préparée par l'assistante : récapitulatif + confirmation --- */
+const CHAMPS_ENVOI=[["nom","Nom"],["whatsapp","WhatsApp"],["email","Mail"],["prestation","Prestation"],["idee","Idée"],["zone","Emplacement"],["taille","Taille"],["disponibilites","Disponibilités"],["histoire","Histoire"]];
+function lireEnvoi(txt){
+  const m=String(txt).match(/\[ENVOI\]([\s\S]*?)(\[\/ENVOI\]|$)/);
+  if(!m)return {texte:txt,data:null};
+  const texte=String(txt).slice(0,m.index).trim();
+  let data=null;
+  try{const o=JSON.parse(m[1].trim());data={};CHAMPS_ENVOI.forEach(([k])=>{data[k]=String(o[k]||"").slice(0,1000).trim()})}catch(e){data=null}
+  if(data&&(!data.nom||!/\d{8,}/.test(data.whatsapp.replace(/\D/g,""))||!/^\S+@\S+\.\S+$/.test(data.email)))data=null;
+  return {texte:texte||"Voici le récapitulatif de votre demande.",data};
+}
+function afficherConfirmation(data){
+  msgs.querySelectorAll(".recap-zone").forEach(x=>x.remove());
+  const last=msgs.lastElementChild;const zone=document.createElement("div");zone.className="recap-zone";
+  const box=document.createElement("div");box.className="recap";
+  CHAMPS_ENVOI.forEach(([k,lab])=>{if(!data[k])return;const l=document.createElement("div");const b=document.createElement("b");b.textContent=lab+" : ";l.appendChild(b);l.appendChild(document.createTextNode(data[k]));box.appendChild(l)});
+  const btn=document.createElement("button");btn.type="button";btn.className="ok-btn";btn.textContent="✅ Confirmer et envoyer à Marie";
+  btn.onclick=async()=>{
+    if(!RESA_URL){addBot("L'envoi automatique n'est pas encore disponible. Utilisez le formulaire « Créer mon projet », merci !");return}
+    btn.disabled=true;btn.textContent="Envoi…";
+    try{const r=await fetch(RESA_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...data,source:"assistante"})});if(!r.ok)throw 0;
+      zone.remove();addBot(`C'est envoyé, ${data.nom.split(" ")[0]} ! 🖤 Marie étudie votre projet et vous recontacte sur WhatsApp. Une confirmation part aussi sur votre adresse mail.`);
+    }catch(e){btn.disabled=false;btn.textContent="Réessayer l'envoi";addBot("L'envoi n'a pas fonctionné. Vérifiez votre connexion et réessayez, ou utilisez le formulaire « Créer mon projet ».")}
+  };
+  zone.appendChild(box);zone.appendChild(btn);last.appendChild(zone);msgs.scrollTop=msgs.scrollHeight;
+}
 async function send(t){
   t=t.trim();if(!t)return;addUser(t);setQuick([]);setTyping(true);
   let r;
@@ -934,15 +967,12 @@ async function send(t){
     try{const res=await fetch(AGENT_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"sendMessage",sessionId,chatInput:t})});const j=await res.json();r=j.output||j.text||"Désolé, je n'ai pas compris."}
     catch(e){r="L'assistante ne répond pas pour le moment. Vous pouvez utiliser le formulaire de « Créer mon projet »."}
   }else{
-    try{const res=await fetch(API+"/maka",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,userId:sessionId})});const j=await res.json();if(!j||!j.answer)throw 0;r=j.answer}
+    try{const res=await fetch(API+"/assistant/maka",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t,userId:sessionId})});const j=await res.json();if(!j||!j.answer)throw 0;r=j.answer}
     catch(e){document.getElementById("demo-tag").hidden=false;await new Promise(z=>setTimeout(z,400));r=local(t)}
   }
-  setTyping(false);addBot(r);
-  if(/projet|tatou|rdv|rendez|réserv|reserv|devis|cover|rattrap|patchwork|histoire|dispo/i.test(userMsgs.join(" "))&&userMsgs.length>=2){
-    const last=msgs.lastElementChild;const b=document.createElement("button");b.className="wa-btn";b.type="button";b.textContent="Envoyer mon projet à Marie sur WhatsApp";
-    b.onclick=()=>openCaution(waLink("Bonjour Maka ! Voici mon projet (via l'assistante du site) :\n\n"+userMsgs.filter(m=>!QUICK.includes(m)).join("\n")));
-    msgs.querySelectorAll(".wa-btn").forEach(x=>x.remove());last.appendChild(b);msgs.scrollTop=msgs.scrollHeight;
-  }
+  setTyping(false);
+  const env=lireEnvoi(r);addBot(env.texte);
+  if(env.data)afficherConfirmation(env.data);
   if(!lead)setQuick(QUICK);
 }
 document.getElementById("chat-form").addEventListener("submit",e=>{e.preventDefault();const i=document.getElementById("chat-in");send(i.value);i.value=""});
